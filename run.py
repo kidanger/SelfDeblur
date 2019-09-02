@@ -16,7 +16,7 @@ dtype = torch.cuda.FloatTensor
 
 warnings.filterwarnings("ignore")
 
-def deblur(input, kernel_size, output, outputk=None, tv=0, lr=0.01,
+def deblur(input, kernel_size, output, outputk=None, sigma=0, lr=0.01,
            reg_noise_std=0.001, num_iter=5000, normalization=1):
     INPUT = 'noise'
     pad = 'reflection'
@@ -60,11 +60,13 @@ def deblur(input, kernel_size, output, outputk=None, tv=0, lr=0.01,
     # Losses
     mse = torch.nn.MSELoss().type(dtype)
     L1 = torch.nn.L1Loss(reduction='sum').type(dtype)
-    tv_loss = TVLoss(tv_loss_weight=tv).type(dtype)
+    lambda_ = 0.1 * sigma / normalization
+    tv_loss = TVLoss(tv_loss_weight=lambda_).type(dtype)
 
     # optimizer
     optimizer = torch.optim.Adam([{'params':net.parameters()},{'params':net_kernel.parameters(),'lr':1e-4}], lr=lr)
-    scheduler = MultiStepLR(optimizer, milestones=[2000, 3000, 4000], gamma=0.5)  # learning rates
+    ml = [int(num_iter*2000/5000), int(num_iter*3000/5000), int(num_iter*4000/5000)]
+    scheduler = MultiStepLR(optimizer, milestones=ml, gamma=0.5)  # learning rates
 
     # initilization inputs
     net_input_saved = net_input.detach().clone()
